@@ -3,7 +3,11 @@ import sys
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 import streamlit as st
+
+sns.set(style="whitegrid")
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
@@ -85,6 +89,54 @@ def main():
         st.write(class_percent)
 
     st.markdown("---")
+
+    # --- Training data vs
+    st.subheader("Training Data Visualizations")
+    
+    tab1, tab2, tab3 = st.tabs(["Class Distribution", "Amounts by Class", "Top Feature Correlations"])
+    
+    with tab1:
+        st.write("Class imbalance in the training dataset.")
+        class_counts = df_train["Class"].value_counts()
+        fig1, ax1 = plt.subplots()
+        sns.barplot(x=class_counts.index, y=class_counts.values, ax=ax1)
+        ax1.set_xticklabels(["Non-fraud (0)", "Fraud (1)"])
+        ax1.set_title("Class Distribution")
+        ax1.set_xlabel("Class")
+        ax1.set_ylabel("Count")
+        st.pyplot(fig1)
+
+    with tab2:
+        st.write("Distribution of transaction amounts split by class.")
+        fig2, ax2 = plt.subplots()
+        sns.histplot(
+            data=df_train,
+            x="Amount",
+            hue="Class",
+            bins=50,
+            log_scale=(False, True),
+            element="step",
+            stat="density",
+            ax=ax2,
+        )
+    ax2.set_title("Transaction Amount Distribution (log Y)")
+    ax2.set_xlabel("Amount")
+    ax2.set_ylabel("Density (log scale)")
+    st.pyplot(fig2)
+
+    with tab3:
+        st.write("Most correlated features with the fraud label.")
+        # compute only once per session
+        numeric_cols = df_train.select_dtypes(include=[np.number]).columns
+        corr_with_class = df_train[numeric_cols].corr()["Class"].sort_values(ascending=False)
+        top_features = corr_with_class.drop("Class").abs().sort_values(ascending=False).head(8).index.tolist()
+
+        fig3, ax3 = plt.subplots(figsize=(6,4))
+        corr_matrix = df_train[top_features + ["Class"]].corr()
+        sns.heatmap(corr_matrix, annot=False, cmap="coolwarm", ax=ax3)
+        ax3.set_title("Correlation of Top Features with Class")
+        st.pyplot(fig3)
+
 
     # --- File uploader for new transactions
     st.subheader("Upload Transactions for Fraud Prediction")
